@@ -1,0 +1,40 @@
+name: Build and Push Docker
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: logstash-pg-es
+      IMAGE_VERSION: 1.0.0
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Split Version Components
+        id: version_split
+        uses: JungWinter/split@v1.1.0
+        with:
+          msg: ${{ env.IMAGE_VERSION }}
+          seperator: '.'
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_SECRET }}
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_ID }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
+            ${{ secrets.DOCKER_ID }}/${{ env.IMAGE_NAME }}:${{ steps.version_split.outputs._0 }}.x
+            ${{ secrets.DOCKER_ID }}/${{ env.IMAGE_NAME }}:${{ steps.version_split.outputs._0 }}.${{ steps.version_split.outputs._1 }}.x
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
